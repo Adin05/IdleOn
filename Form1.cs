@@ -8,10 +8,13 @@ namespace IdleOn;
 public partial class Form1 : Form
 {
     private System.Windows.Forms.Timer activityTimer;
+    private System.Windows.Forms.Timer countdownTimer;
     private DateTime lastActivityTime;
+    private DateTime endTime;
     private const int IDLE_THRESHOLD_MINUTES = 2;
     private bool isPreventingSleep = false;
     private bool isMonitoringEnabled = true;
+    private bool isCountdownActive = false;
 
     // Import required Windows API functions
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -30,6 +33,8 @@ public partial class Form1 : Form
     {
         InitializeComponent();
         InitializeActivityMonitoring();
+        InitializeCountdownTimer();
+        durationComboBox.SelectedIndexChanged += DurationComboBox_SelectedIndexChanged;
     }
 
     private void InitializeActivityMonitoring()
@@ -46,6 +51,49 @@ public partial class Form1 : Form
         // Set up activity monitoring
         this.MouseMove += Form1_MouseMove;
         this.KeyPress += Form1_KeyPress;
+    }
+
+    private void InitializeCountdownTimer()
+    {
+        countdownTimer = new System.Windows.Forms.Timer();
+        countdownTimer.Interval = 1000; // Update every second
+        countdownTimer.Tick += CountdownTimer_Tick;
+    }
+
+    private void DurationComboBox_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (!isMonitoringEnabled) return;
+        
+        // If currently preventing sleep, restart the countdown with new duration
+        if (isPreventingSleep)
+        {
+            StartCountdown();
+        }
+        else
+        {
+            StopCountdown();
+        }
+    }
+
+    private void CountdownTimer_Tick(object sender, EventArgs e)
+    {
+        if (!isCountdownActive || !isPreventingSleep) return;
+
+        TimeSpan remaining = endTime - DateTime.Now;
+        if (remaining.TotalSeconds <= 0)
+        {
+            countdownTimer.Stop();
+            isCountdownActive = false;
+            isMonitoringEnabled = false;
+            StopPreventingSleep();
+            toggleButton.Text = "Enable Monitoring";
+            toggleButton.BackColor = System.Drawing.Color.LightCoral;
+            countdownLabel.Text = "Time remaining: Expired";
+            UpdateStatus(DateTime.Now - lastActivityTime);
+            return;
+        }
+
+        countdownLabel.Text = $"Time remaining: {remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
     }
 
     private void Form1_MouseMove(object sender, MouseEventArgs e)
@@ -70,6 +118,7 @@ public partial class Form1 : Form
         if (isPreventingSleep)
         {
             StopPreventingSleep();
+            StopCountdown();
         }
     }
 
@@ -89,10 +138,12 @@ public partial class Form1 : Form
         if (idleTime.TotalMinutes >= IDLE_THRESHOLD_MINUTES && !isPreventingSleep)
         {
             StartPreventingSleep();
+            StartCountdown(); // Start countdown when idle is detected
         }
         else if (idleTime.TotalMinutes < IDLE_THRESHOLD_MINUTES && isPreventingSleep)
         {
             StopPreventingSleep();
+            StopCountdown(); // Stop countdown when activity resumes
         }
 
         // Update status
@@ -111,6 +162,45 @@ public partial class Form1 : Form
     {
         SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS);
         isPreventingSleep = false;
+    }
+
+    private void StartCountdown()
+    {
+        string selectedDuration = durationComboBox.SelectedItem.ToString();
+        if (selectedDuration == "All time")
+        {
+            isCountdownActive = false;
+            countdownTimer.Stop();
+            countdownLabel.Text = "Time remaining: Indefinite";
+            return;
+        }
+
+        int minutes = selectedDuration switch
+        {
+            "30 minutes" => 30,
+            "1 hour" => 60,
+            "2 hours" => 120,
+            "4 hours" => 240,
+            _ => 30
+        };
+
+        endTime = DateTime.Now.AddMinutes(minutes);
+        isCountdownActive = true;
+        countdownTimer.Start();
+        countdownLabel.Text = $"Time remaining: {minutes:D2}:00:00"; // Show initial time immediately
+
+        // Bring form to front
+        this.WindowState = FormWindowState.Normal;
+        this.Activate();
+        this.TopMost = true;
+        this.TopMost = false;
+    }
+
+    private void StopCountdown()
+    {
+        countdownTimer.Stop();
+        isCountdownActive = false;
+        countdownLabel.Text = "Time remaining: --:--:--";
     }
 
     private void UpdateStatus(TimeSpan idleTime)
@@ -139,12 +229,14 @@ public partial class Form1 : Form
             {
                 StopPreventingSleep();
             }
+            StopCountdown();
         }
         else
         {
             toggleButton.Text = "Disable Monitoring";
             toggleButton.BackColor = System.Drawing.Color.LightGreen;
             lastActivityTime = DateTime.Now;
+            StopCountdown();
         }
 
         UpdateStatus(DateTime.Now - lastActivityTime);
@@ -153,6 +245,7 @@ public partial class Form1 : Form
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         StopPreventingSleep();
+        countdownTimer.Stop();
         base.OnFormClosing(e);
     }
 }

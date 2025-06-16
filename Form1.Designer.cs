@@ -30,7 +30,7 @@ partial class Form1
     {
         this.components = new System.ComponentModel.Container();
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-        this.ClientSize = new System.Drawing.Size(800, 370);
+        this.ClientSize = new System.Drawing.Size(800, 500);
         this.Text = "IdleOn";
         this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
         this.MinimizeBox = true;
@@ -73,6 +73,24 @@ partial class Form1
         this.idleLabel.Location = new System.Drawing.Point(20, 140);
         this.statusPanel.Controls.Add(this.idleLabel);
 
+        // Create and configure the duration dropdown
+        this.durationComboBox = new System.Windows.Forms.ComboBox();
+        this.durationComboBox.Items.AddRange(new object[] { "30 minutes", "1 hour", "2 hours", "4 hours", "All time" });
+        this.durationComboBox.SelectedIndex = 1;
+        this.durationComboBox.Size = new System.Drawing.Size(300, 30);
+        this.durationComboBox.Location = new System.Drawing.Point(20, 200);
+        this.durationComboBox.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+        this.durationComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+        this.statusPanel.Controls.Add(this.durationComboBox);
+
+        // Create and configure the countdown label
+        this.countdownLabel = new System.Windows.Forms.Label();
+        this.countdownLabel.AutoSize = true;
+        this.countdownLabel.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+        this.countdownLabel.Text = "Time remaining: --:--:--";
+        this.countdownLabel.Location = new System.Drawing.Point(20, 250);
+        this.statusPanel.Controls.Add(this.countdownLabel);
+
         // Create and configure the button panel
         this.buttonPanel = new System.Windows.Forms.Panel();
         this.buttonPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
@@ -99,6 +117,8 @@ partial class Form1
     private System.Windows.Forms.Label monitoringLabel;
     private System.Windows.Forms.Label sleepLabel;
     private System.Windows.Forms.Label idleLabel;
+    private System.Windows.Forms.ComboBox durationComboBox;
+    private System.Windows.Forms.Label countdownLabel;
 
     #endregion
 }
