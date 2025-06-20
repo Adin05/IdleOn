@@ -15,6 +15,8 @@ public partial class Form1 : Form
     private bool isPreventingSleep = false;
     private bool isMonitoringEnabled = true;
     private bool isCountdownActive = false;
+    private NotifyIcon trayIcon;
+    private ContextMenuStrip trayMenu;
 
     // Import required Windows API functions
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -35,6 +37,8 @@ public partial class Form1 : Form
         InitializeActivityMonitoring();
         InitializeCountdownTimer();
         durationComboBox.SelectedIndexChanged += DurationComboBox_SelectedIndexChanged;
+        InitializeTray();
+        this.Resize += Form1_Resize;
     }
 
     private void InitializeActivityMonitoring()
@@ -58,6 +62,20 @@ public partial class Form1 : Form
         countdownTimer = new System.Windows.Forms.Timer();
         countdownTimer.Interval = 1000; // Update every second
         countdownTimer.Tick += CountdownTimer_Tick;
+    }
+
+    private void InitializeTray()
+    {
+        trayMenu = new ContextMenuStrip();
+        trayMenu.Items.Add("Restore", null, (s, e) => RestoreFromTray());
+        trayMenu.Items.Add("Exit", null, (s, e) => Application.Exit());
+
+        trayIcon = new NotifyIcon();
+        trayIcon.Text = "IdleOn";
+        trayIcon.Icon = SystemIcons.Application;
+        trayIcon.ContextMenuStrip = trayMenu;
+        trayIcon.Visible = false;
+        trayIcon.DoubleClick += (s, e) => RestoreFromTray();
     }
 
     private void DurationComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -188,12 +206,6 @@ public partial class Form1 : Form
         isCountdownActive = true;
         countdownTimer.Start();
         countdownLabel.Text = $"Time remaining: {minutes:D2}:00:00"; // Show initial time immediately
-
-        // Bring form to front
-        this.WindowState = FormWindowState.Normal;
-        this.Activate();
-        this.TopMost = true;
-        this.TopMost = false;
     }
 
     private void StopCountdown()
@@ -242,10 +254,33 @@ public partial class Form1 : Form
         UpdateStatus(DateTime.Now - lastActivityTime);
     }
 
+    private void Form1_Resize(object sender, EventArgs e)
+    {
+        if (this.WindowState == FormWindowState.Minimized)
+        {
+            HideToTray();
+        }
+    }
+
+    private void HideToTray()
+    {
+        this.Hide();
+        trayIcon.Visible = true;
+    }
+
+    private void RestoreFromTray()
+    {
+        this.Show();
+        this.WindowState = FormWindowState.Normal;
+        this.BringToFront();
+        trayIcon.Visible = false;
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         StopPreventingSleep();
         countdownTimer.Stop();
+        trayIcon.Visible = false;
         base.OnFormClosing(e);
     }
 }
