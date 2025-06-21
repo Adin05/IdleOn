@@ -2,6 +2,7 @@ using System;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace IdleOn;
 
@@ -34,6 +35,7 @@ public partial class Form1 : Form
     public Form1()
     {
         InitializeComponent();
+        this.Icon = new Icon("assets/screenOn2.ico");
         InitializeActivityMonitoring();
         InitializeCountdownTimer();
         durationComboBox.SelectedIndexChanged += DurationComboBox_SelectedIndexChanged;
@@ -72,7 +74,7 @@ public partial class Form1 : Form
 
         trayIcon = new NotifyIcon();
         trayIcon.Text = "IdleOn";
-        trayIcon.Icon = SystemIcons.Application;
+        trayIcon.Icon = new Icon("assets/screenOn2.ico");
         trayIcon.ContextMenuStrip = trayMenu;
         trayIcon.Visible = false;
         trayIcon.DoubleClick += (s, e) => RestoreFromTray();

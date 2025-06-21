@@ -36,6 +36,7 @@ partial class Form1
         this.MinimizeBox = true;
         this.MaximizeBox = false;
         this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+        this.Icon = new System.Drawing.Icon("assets/screenOn2.ico");
 
         // Create and configure the main panel
         this.mainPanel = new System.Windows.Forms.Panel();
