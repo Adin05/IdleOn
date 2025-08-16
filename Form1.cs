@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Drawing;
+using Microsoft.Win32;
 
 namespace IdleOn;
 
@@ -16,12 +17,19 @@ public partial class Form1 : Form
     private bool isPreventingSleep = false;
     private bool isMonitoringEnabled = true;
     private bool isCountdownActive = false;
+    private bool isComputerLocked = false;
     private NotifyIcon trayIcon;
     private ContextMenuStrip trayMenu;
 
     // Import required Windows API functions
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     static extern EXECUTION_STATE SetThreadExecutionState(EXECUTION_STATE esFlags);
+
+    [DllImport("user32.dll")]
+    static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
 
     [Flags]
     public enum EXECUTION_STATE : uint
@@ -41,6 +49,24 @@ public partial class Form1 : Form
         durationComboBox.SelectedIndexChanged += DurationComboBox_SelectedIndexChanged;
         InitializeTray();
         this.Resize += Form1_Resize;
+        SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
+    }
+
+    private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason == SessionSwitchReason.SessionLock)
+        {
+            isComputerLocked = true;
+            if (isPreventingSleep)
+            {
+                StopPreventingSleep();
+            }
+        }
+        else if (e.Reason == SessionSwitchReason.SessionUnlock)
+        {
+            isComputerLocked = false;
+            lastActivityTime = DateTime.Now;
+        }
     }
 
     private void InitializeActivityMonitoring()
@@ -144,7 +170,7 @@ public partial class Form1 : Form
 
     private void ActivityTimer_Tick(object sender, EventArgs e)
     {
-        if (!isMonitoringEnabled)
+        if (!isMonitoringEnabled || isComputerLocked)
         {
             if (isPreventingSleep)
             {
@@ -220,6 +246,7 @@ public partial class Form1 : Form
     private void UpdateStatus(TimeSpan idleTime)
     {
         string status = !isMonitoringEnabled ? "Monitoring Disabled" :
+                      isComputerLocked ? "Computer Locked" :
                       isPreventingSleep ? "Preventing Sleep" : "Active";
         string idleTimeStr = $"{Math.Floor(idleTime.TotalMinutes)}m {idleTime.Seconds}s";
         
@@ -283,6 +310,7 @@ public partial class Form1 : Form
         StopPreventingSleep();
         countdownTimer.Stop();
         trayIcon.Visible = false;
+        SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
         base.OnFormClosing(e);
     }
 }

@@ -77,7 +77,7 @@ partial class Form1
         // Create and configure the duration dropdown
         this.durationComboBox = new System.Windows.Forms.ComboBox();
         this.durationComboBox.Items.AddRange(new object[] { "30 minutes", "1 hour", "2 hours", "4 hours", "All time" });
-        this.durationComboBox.SelectedIndex = 1;
+        this.durationComboBox.SelectedIndex = 2; // Set default
         this.durationComboBox.Size = new System.Drawing.Size(300, 30);
         this.durationComboBox.Location = new System.Drawing.Point(20, 200);
         this.durationComboBox.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
