@@ -66,6 +66,43 @@ public partial class Form1 : Form
         {
             isComputerLocked = false;
             lastActivityTime = DateTime.Now;
+            
+            // Re-enable monitoring with 30 minutes if it was disabled
+            if (!isMonitoringEnabled)
+            {
+                isMonitoringEnabled = true;
+                durationComboBox.SelectedIndex = 0; // Set to 30 minutes
+                toggleButton.Text = "Disable Monitoring";
+                toggleButton.BackColor = System.Drawing.Color.LightGreen;
+                BringAppToFront();
+            }
+        }
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        // Subscribe to power events for wake detection
+        Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
+    }
+
+    private void SystemEvents_PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == PowerModes.Resume)
+        {
+            // PC woke from sleep
+            isComputerLocked = false;
+            lastActivityTime = DateTime.Now;
+            
+            // Re-enable monitoring with 30 minutes if it was disabled
+            if (!isMonitoringEnabled)
+            {
+                isMonitoringEnabled = true;
+                durationComboBox.SelectedIndex = 0; // Set to 30 minutes
+                toggleButton.Text = "Disable Monitoring";
+                toggleButton.BackColor = System.Drawing.Color.LightGreen;
+                BringAppToFront();
+            }
         }
     }
 
@@ -305,12 +342,37 @@ public partial class Form1 : Form
         trayIcon.Visible = false;
     }
 
+    private void BringAppToFront()
+    {
+        this.BeginInvoke(new Action(() =>
+        {
+            this.WindowState = FormWindowState.Normal;
+            this.Show();
+            this.TopMost = true;
+            this.Activate();
+            this.BringToFront();
+            trayIcon.Visible = false;
+            
+            // Keep it on top for 3 seconds, then return to normal
+            System.Threading.Timer timer = null;
+            timer = new System.Threading.Timer((state) =>
+            {
+                this.BeginInvoke(new Action(() =>
+                {
+                    this.TopMost = false;
+                    timer?.Dispose();
+                }));
+            }, null, 3000, Timeout.Infinite);
+        }));
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         StopPreventingSleep();
         countdownTimer.Stop();
         trayIcon.Visible = false;
         SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+        SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
         base.OnFormClosing(e);
     }
 }
