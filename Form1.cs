@@ -31,6 +31,20 @@ public partial class Form1 : Form
     [DllImport("user32.dll")]
     static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
 
+    // Global activity monitoring imports
+    [DllImport("user32.dll")]
+    static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+    [DllImport("kernel32.dll")]
+    static extern uint GetTickCount();
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct LASTINPUTINFO
+    {
+        public uint cbSize;
+        public uint dwTime;
+    }
+
     [Flags]
     public enum EXECUTION_STATE : uint
     {
@@ -65,7 +79,6 @@ public partial class Form1 : Form
         else if (e.Reason == SessionSwitchReason.SessionUnlock)
         {
             isComputerLocked = false;
-            lastActivityTime = DateTime.Now;
             
             // Re-enable monitoring with 30 minutes if it was disabled
             if (!isMonitoringEnabled)
@@ -92,7 +105,6 @@ public partial class Form1 : Form
         {
             // PC woke from sleep
             isComputerLocked = false;
-            lastActivityTime = DateTime.Now;
             
             // Re-enable monitoring with 30 minutes if it was disabled
             if (!isMonitoringEnabled)
@@ -116,10 +128,6 @@ public partial class Form1 : Form
 
         // Initialize last activity time
         lastActivityTime = DateTime.Now;
-
-        // Set up activity monitoring
-        this.MouseMove += Form1_MouseMove;
-        this.KeyPress += Form1_KeyPress;
     }
 
     private void InitializeCountdownTimer()
@@ -172,28 +180,14 @@ public partial class Form1 : Form
             toggleButton.Text = "Enable Monitoring";
             toggleButton.BackColor = System.Drawing.Color.LightCoral;
             countdownLabel.Text = "Time remaining: Expired";
-            UpdateStatus(DateTime.Now - lastActivityTime);
+            UpdateStatus(GetGlobalIdleTime());
             return;
         }
 
         countdownLabel.Text = $"Time remaining: {remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
     }
 
-    private void Form1_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (isMonitoringEnabled)
-        {
-            UpdateLastActivity();
-        }
-    }
 
-    private void Form1_KeyPress(object sender, KeyPressEventArgs e)
-    {
-        if (isMonitoringEnabled)
-        {
-            UpdateLastActivity();
-        }
-    }
 
     private void UpdateLastActivity()
     {
@@ -203,6 +197,21 @@ public partial class Form1 : Form
             StopPreventingSleep();
             StopCountdown();
         }
+    }
+
+    private TimeSpan GetGlobalIdleTime()
+    {
+        LASTINPUTINFO lastInput = new LASTINPUTINFO();
+        lastInput.cbSize = (uint)Marshal.SizeOf(lastInput);
+        
+        if (GetLastInputInfo(ref lastInput))
+        {
+            uint tickCount = GetTickCount();
+            uint idleTime = tickCount - lastInput.dwTime;
+            return TimeSpan.FromMilliseconds(idleTime);
+        }
+        
+        return TimeSpan.Zero;
     }
 
     private void ActivityTimer_Tick(object sender, EventArgs e)
@@ -216,7 +225,7 @@ public partial class Form1 : Form
             return;
         }
 
-        TimeSpan idleTime = DateTime.Now - lastActivityTime;
+        TimeSpan idleTime = GetGlobalIdleTime();
         
         if (idleTime.TotalMinutes >= IDLE_THRESHOLD_MINUTES && !isPreventingSleep)
         {
@@ -313,11 +322,10 @@ public partial class Form1 : Form
         {
             toggleButton.Text = "Disable Monitoring";
             toggleButton.BackColor = System.Drawing.Color.LightGreen;
-            lastActivityTime = DateTime.Now;
             StopCountdown();
         }
 
-        UpdateStatus(DateTime.Now - lastActivityTime);
+        UpdateStatus(GetGlobalIdleTime());
     }
 
     private void Form1_Resize(object sender, EventArgs e)

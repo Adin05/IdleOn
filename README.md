@@ -4,6 +4,7 @@ A Windows application that prevents your system from going to sleep during perio
 
 ## Features
 
+- **Global Activity Monitoring**: Detects user activity across all applications, not just within the app window
 - Toggle monitoring on/off with a single click
 - Real-time status display showing:
   - Monitoring status
@@ -11,6 +12,8 @@ A Windows application that prevents your system from going to sleep during perio
   - Idle time counter
 - Clean and simple user interface
 - System tray support for easy access
+- Configurable idle threshold (2 minutes by default)
+- Multiple duration options for sleep prevention (30 min, 1 hour, 2 hours, 4 hours, or indefinite)
 
 ## Requirements
 
