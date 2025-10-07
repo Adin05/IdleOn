@@ -20,6 +20,7 @@ public partial class Form1 : Form
     private bool isComputerLocked = false;
     private NotifyIcon trayIcon;
     private ContextMenuStrip trayMenu;
+    private const float BATTERY_DISABLE_THRESHOLD = 0.20f; // 20%
 
     // Import required Windows API functions
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -216,6 +217,25 @@ public partial class Form1 : Form
 
     private void ActivityTimer_Tick(object sender, EventArgs e)
     {
+        // Auto-disable when running on battery and below threshold
+        var (onBattery, batteryPercent) = GetBatteryStatus();
+        if (onBattery && batteryPercent >= 0 && batteryPercent < BATTERY_DISABLE_THRESHOLD)
+        {
+            if (isMonitoringEnabled)
+            {
+                isMonitoringEnabled = false;
+                if (isPreventingSleep)
+                {
+                    StopPreventingSleep();
+                }
+                StopCountdown();
+                toggleButton.Text = "Enable Monitoring";
+                toggleButton.BackColor = System.Drawing.Color.LightCoral;
+                UpdateStatus(GetGlobalIdleTime());
+            }
+            return;
+        }
+
         if (!isMonitoringEnabled || isComputerLocked)
         {
             if (isPreventingSleep)
@@ -240,6 +260,14 @@ public partial class Form1 : Form
 
         // Update status
         UpdateStatus(idleTime);
+    }
+
+    private (bool onBattery, float batteryPercent) GetBatteryStatus()
+    {
+        var powerStatus = SystemInformation.PowerStatus;
+        bool onBattery = powerStatus.PowerLineStatus != PowerLineStatus.Online;
+        float batteryPercent = powerStatus.BatteryLifePercent; // 0.0 - 1.0; -1 when unknown
+        return (onBattery, batteryPercent);
     }
 
     private void StartPreventingSleep()
